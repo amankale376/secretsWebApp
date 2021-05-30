@@ -4,11 +4,11 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const ejs = require('ejs');
 const mongoose = require('mongoose');
-const encrypt = require('mongoose-encryption')
+const md5 = require('md5');
 
 const app = express();
 
-console.log(process.env.API_KEY);
+
 
 app.use(express.static("public"));
 app.set('view engine', 'ejs');
@@ -21,8 +21,6 @@ const userSchema = new mongoose.Schema({
     password: String
 });
 
- //use environment variables and do not include them in git repository
-userSchema.plugin(encrypt,{secret:process.env.SECRET, encryptedFields:["password"]});
 
 const User = mongoose.model("user",userSchema);
 
@@ -41,7 +39,8 @@ User.findOne({email:req.body.username}, (err, data)=>{
         res.send(err);
     }else{
         if(data){
-            if(data.password === req.body.password){
+            if(data.password === md5(req.body.password)){
+                console.log("login successful");
                 res.render("secrets");
             }
         }
@@ -58,7 +57,7 @@ app.route("/register")
 .post((req,res)=>{
   const user = new User({
       email: req.body.username,
-      password:req.body.password
+      password:md5(req.body.password)
   });
   user.save((err)=>{ 
       if(err){console.log(err);
