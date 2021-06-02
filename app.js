@@ -42,7 +42,9 @@ mongoose.set('useCreateIndex', true);
 const userSchema = new mongoose.Schema({
     email: String,
     password: String,
-    googleId:String
+    googleId:String,
+    facebookId:String,
+    secret:String
 });
 //using passportLocalmongoose plugin to make hash and salting 
 userSchema.plugin(passportLocalMongoose);
@@ -65,6 +67,7 @@ passport.use(User.createStrategy()); // to create local login stratergy
      });
    });
 
+
 passport.use(new GoogleStrategy({
     clientID: process.env.CLIENT_ID,
     clientSecret: process.env.CLIENT_SECRET,
@@ -73,7 +76,7 @@ passport.use(new GoogleStrategy({
   },
 
   function(accessToken, refreshToken, profile, cb) {
-    console.log(profile);
+    
     User.findOrCreate({ googleId: profile.id}, function (err, user) { 
         // you need to install "npm i mongoose-findorcreate" to make this code work
       return cb(err, user);
@@ -116,6 +119,30 @@ res.redirect("/secrets");
 });
 });
 
+//submit
+app.route("/submit")
+.get((req,res)=>{
+
+  if(req.isAuthenticated()){
+   
+      res.render("submit");  
+  }else{
+      res.redirect("/login");
+  }
+})
+.post((req,res)=>{
+const userSecret = req.body.secret;
+if(req.isAuthenticated()){
+
+  User.findById(req.user.id, (err, foundUser)=>{
+    foundUser.secret = userSecret;
+    foundUser.save((err)=>{if(err){console.log(err);}});
+    res.redirect("/secrets");
+  });
+}else{
+    res.redirect("/login");
+}
+});
 
 // /register
 app.route("/register")
@@ -147,7 +174,14 @@ app.route("/secrets")
 .get((req,res)=>{
 
     if(req.isAuthenticated()){
-        res.render("secrets");  
+     User.find({"secret":{$ne:null}},(err,data)=>{
+       if(err){
+         console.log(err);
+       }else{
+        res.render("secrets",{secretsFound:data});  
+       }
+     }); // using $ne:null to only find all fields which have data in it
+      
     }else{
         res.redirect("/login");
     }
